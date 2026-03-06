@@ -1,0 +1,51 @@
+# ─────────────────────────────────────────────────────
+# Staging — worker (background job processor)
+# ─────────────────────────────────────────────────────
+
+replicaCount: 1
+
+image:
+  repository: registry.gitlab.com/myorg/worker
+  tag: "latest"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+
+# Workers don't need ingress
+ingress:
+  enabled: false
+
+# Workers don't serve HTTP — use exec probes
+healthCheck:
+  liveness:
+    path: /healthz
+    port: http
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    failureThreshold: 5
+  readiness:
+    path: /ready
+    port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+  startup:
+    path: /healthz
+    port: http
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 60
+
+env:
+  - name: WORKER_CONCURRENCY
+    value: "2"
+  - name: ENVIRONMENT
+    value: "staging"

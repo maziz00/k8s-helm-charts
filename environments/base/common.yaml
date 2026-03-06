@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────
+# Base values — shared across all environments
+# Override per-env in staging/ and production/
+# ─────────────────────────────────────────────────────
+
+image:
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+
+healthCheck:
+  liveness:
+    path: /healthz
+    port: http
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    failureThreshold: 3
+  readiness:
+    path: /ready
+    port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 3
+  startup:
+    path: /healthz
+    port: http
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 30
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: "25%"
+    maxUnavailable: 0

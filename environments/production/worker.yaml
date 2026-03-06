@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────
+# Production — worker (background job processor)
+# KEDA event-driven autoscaling (scale to zero when idle)
+# ─────────────────────────────────────────────────────
+
+replicaCount: 2
+
+image:
+  repository: registry.gitlab.com/myorg/worker
+  tag: "v1.2.0"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# Standard HPA disabled — using KEDA instead
+autoscaling:
+  enabled: false
+
+# KEDA: scale workers based on queue depth
+keda:
+  enabled: true
+  pollingInterval: 15
+  cooldownPeriod: 300
+  minReplicaCount: 1    # Keep 1 warm in production
+  maxReplicaCount: 30
+  triggers:
+    - type: rabbitmq
+      metadata:
+        host: amqp://rabbitmq.production.svc.cluster.local
+        queueName: jobs
+        queueLength: "5"  # 1 pod per 5 messages in queue
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+ingress:
+  enabled: false
+
+env:
+  - name: WORKER_CONCURRENCY
+    value: "10"
+  - name: ENVIRONMENT
+    value: "production"

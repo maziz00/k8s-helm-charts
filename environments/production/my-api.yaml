@@ -1,0 +1,128 @@
+# ─────────────────────────────────────────────────────
+# Production — my-api
+# Full autoscaling, PDB, tenant isolation, monitoring
+# ─────────────────────────────────────────────────────
+
+replicaCount: 3
+
+image:
+  repository: registry.gitlab.com/myorg/my-api
+  tag: "v1.2.0"  # Always pin tags in production
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# Full HPA with behavior policies
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: "50%"
+
+# Multi-tenant: production tenant gets larger quota
+tenant:
+  enabled: true
+  name: production
+  resourceQuota:
+    requests:
+      cpu: "16"
+      memory: "32Gi"
+    limits:
+      cpu: "32"
+      memory: "64Gi"
+    pods: "50"
+    services: "20"
+    persistentvolumeclaims: "10"
+  limitRange:
+    default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+    max:
+      cpu: "4"
+      memory: "8Gi"
+
+networkPolicy:
+  enabled: true
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+  hosts:
+    - host: api.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: api-tls
+      hosts:
+        - api.example.com
+
+# Spread pods across availability zones
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: my-api
+
+env:
+  - name: LOG_LEVEL
+    value: "info"
+  - name: ENVIRONMENT
+    value: "production"
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: app-secrets
+        key: database-url
+
+serviceAccount:
+  annotations:
+    # AWS IRSA example
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/my-api-production
