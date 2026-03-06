@@ -1,0 +1,43 @@
+{{/*
+Multi-Tenant Resources
+Creates ResourceQuota and LimitRange when tenant mode is enabled.
+This enforces fair resource sharing across tenants in a shared cluster.
+*/}}
+
+{{- if .Values.tenant.enabled }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ .Values.tenant.name }}-quota
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  hard:
+    requests.cpu: {{ .Values.tenant.resourceQuota.requests.cpu | quote }}
+    requests.memory: {{ .Values.tenant.resourceQuota.requests.memory | quote }}
+    limits.cpu: {{ .Values.tenant.resourceQuota.limits.cpu | quote }}
+    limits.memory: {{ .Values.tenant.resourceQuota.limits.memory | quote }}
+    pods: {{ .Values.tenant.resourceQuota.pods | quote }}
+    services: {{ .Values.tenant.resourceQuota.services | quote }}
+    persistentvolumeclaims: {{ .Values.tenant.resourceQuota.persistentvolumeclaims | quote }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ .Values.tenant.name }}-limits
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: {{ .Values.tenant.limitRange.default.cpu | quote }}
+        memory: {{ .Values.tenant.limitRange.default.memory | quote }}
+      defaultRequest:
+        cpu: {{ .Values.tenant.limitRange.defaultRequest.cpu | quote }}
+        memory: {{ .Values.tenant.limitRange.defaultRequest.memory | quote }}
+      max:
+        cpu: {{ .Values.tenant.limitRange.max.cpu | quote }}
+        memory: {{ .Values.tenant.limitRange.max.memory | quote }}
+{{- end }}

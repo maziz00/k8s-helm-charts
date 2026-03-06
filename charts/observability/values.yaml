@@ -1,0 +1,99 @@
+# ─────────────────────────────────────────────────────
+# Observability Stack — Prometheus + Grafana + Loki
+# Multi-tenant: per-namespace metrics and RBAC dashboards
+# ─────────────────────────────────────────────────────
+
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 15d
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 50Gi
+      # Multi-tenant: scrape metrics from all namespaces
+      # but Grafana RBAC restricts who sees what
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+
+  grafana:
+    adminPassword: ""  # Set via secret in production
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    persistence:
+      enabled: true
+      size: 10Gi
+    # Multi-tenant: Grafana orgs per tenant
+    # Each tenant sees only their namespace dashboards
+    grafana.ini:
+      auth:
+        disable_login_form: false
+      users:
+        auto_assign_org: true
+        auto_assign_org_role: Viewer
+
+  # Pre-configured alert rules
+  defaultRules:
+    create: true
+    rules:
+      alertmanager: true
+      etcd: true
+      general: true
+      k8s: true
+      kubeApiserver: true
+      kubePrometheusNodeRecording: true
+      kubernetesApps: true
+      kubernetesResources: true
+      kubernetesStorage: true
+      node: true
+
+  alertmanager:
+    alertmanagerSpec:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+
+# ── LOKI (Log Aggregation) ───────────────────────────
+loki:
+  enabled: true
+
+loki-stack:
+  loki:
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+  promtail:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# ── CUSTOM ALERT RULES ──────────────────────────────
+customAlerts:
+  enabled: true

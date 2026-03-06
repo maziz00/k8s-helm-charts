@@ -1,0 +1,85 @@
+# ─────────────────────────────────────────────────────
+# Ingress Stack — NGINX + TLS + DNS
+# Multi-tenant: per-namespace ingress classes + rate limits
+# ─────────────────────────────────────────────────────
+
+# ── NGINX INGRESS CONTROLLER ─────────────────────────
+ingress-nginx:
+  controller:
+    replicaCount: 2
+    # HPA for ingress controller itself
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    # Global rate limiting defaults — per-tenant overrides via annotations
+    config:
+      limit-req-status-code: "429"
+      limit-conn-status-code: "429"
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    # Multi-tenant: use IngressClass per tenant
+    ingressClassResource:
+      name: nginx
+      enabled: true
+      default: true
+
+# ── CERT-MANAGER ─────────────────────────────────────
+certManager:
+  enabled: true
+
+cert-manager:
+  installCRDs: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# ── CLUSTER ISSUERS ──────────────────────────────────
+clusterIssuers:
+  letsencryptStaging:
+    enabled: true
+    email: ""  # REQUIRED: your email for Let's Encrypt
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+  letsencryptProd:
+    enabled: true
+    email: ""  # REQUIRED: your email for Let's Encrypt
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+# ── EXTERNAL DNS ─────────────────────────────────────
+externalDns:
+  enabled: false
+
+external-dns:
+  provider: google  # or aws
+  # GCP
+  google:
+    project: ""
+  # AWS
+  aws:
+    region: ""
+  policy: sync  # sync = create + delete, upsert-only = create only
+  txtOwnerId: "k8s-cluster"
+  domainFilters: []
+    # - example.com
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi

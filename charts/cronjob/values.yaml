@@ -1,0 +1,54 @@
+# ─────────────────────────────────────────────────────
+# CronJob Chart — Default Values
+# ─────────────────────────────────────────────────────
+
+image:
+  repository: registry.gitlab.com/myorg/batch-job
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Cron schedule (UTC)
+schedule: "0 2 * * *"  # Daily at 2 AM
+
+# Forbid = skip if previous still running
+# Replace = kill previous, start new
+# Allow = run concurrently
+concurrencyPolicy: Forbid
+
+# Keep last N successful/failed job pods for debugging
+successfulJobsHistoryLimit: 3
+failedJobsHistoryLimit: 5
+
+# Deadline to start the job (seconds) — prevents stale job execution
+startingDeadlineSeconds: 600
+
+# Suspend the cronjob without deleting it
+suspend: false
+
+# Job-level settings
+backoffLimit: 3
+activeDeadlineSeconds: 3600  # Kill job if running > 1 hour
+ttlSecondsAfterFinished: 86400  # Cleanup completed pods after 24h
+
+restartPolicy: OnFailure
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env: []
+envFrom: []
+volumes: []
+volumeMounts: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+nodeSelector: {}
+tolerations: []

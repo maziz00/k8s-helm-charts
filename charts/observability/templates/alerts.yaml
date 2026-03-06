@@ -1,0 +1,79 @@
+{{- if .Values.customAlerts.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-custom-alerts
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    release: {{ .Release.Name }}
+spec:
+  groups:
+    - name: deployment-alerts
+      rules:
+        - alert: HighPodRestartRate
+          expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 * 15 > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{`{{ $labels.namespace }}`}}/{{`{{ $labels.pod }}`}} restarting frequently"
+            description: "Pod has restarted more than 3 times in 15 minutes."
+
+        - alert: DeploymentReplicasMismatch
+          expr: kube_deployment_spec_replicas != kube_deployment_status_ready_replicas
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Deployment {{`{{ $labels.namespace }}`}}/{{`{{ $labels.deployment }}`}} replicas mismatch"
+            description: "Deployment has not matched desired replicas for 10 minutes."
+
+        - alert: PodCPUThrottling
+          expr: rate(container_cpu_cfs_throttled_periods_total[5m]) / rate(container_cpu_cfs_periods_total[5m]) > 0.5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{`{{ $labels.namespace }}`}}/{{`{{ $labels.pod }}`}} CPU throttled >50%"
+            description: "Container is being CPU throttled more than half the time. Consider increasing CPU limits."
+
+        - alert: PodMemoryNearLimit
+          expr: container_memory_working_set_bytes / container_spec_memory_limit_bytes > 0.9
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{`{{ $labels.namespace }}`}}/{{`{{ $labels.pod }}`}} memory at 90% of limit"
+            description: "Container memory usage is near its limit. OOMKill is likely."
+
+    - name: hpa-alerts
+      rules:
+        - alert: HPAMaxedOut
+          expr: kube_horizontalpodautoscaler_status_current_replicas == kube_horizontalpodautoscaler_spec_max_replicas
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "HPA {{`{{ $labels.namespace }}`}}/{{`{{ $labels.horizontalpodautoscaler }}`}} at max replicas"
+            description: "HPA has been at maximum replicas for 15 minutes. Consider increasing maxReplicas."
+
+        - alert: HPAScaleUpFailed
+          expr: kube_horizontalpodautoscaler_status_condition{condition="ScalingLimited",status="true"} == 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "HPA {{`{{ $labels.namespace }}`}}/{{`{{ $labels.horizontalpodautoscaler }}`}} cannot scale"
+            description: "HPA is limited and cannot scale. Check ResourceQuota or cluster capacity."
+
+    - name: tenant-alerts
+      rules:
+        - alert: NamespaceQuotaNearLimit
+          expr: kube_resourcequota{type="used"} / kube_resourcequota{type="hard"} > 0.85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Namespace {{`{{ $labels.namespace }}`}} resource quota at 85%"
+            description: "Resource {{`{{ $labels.resource }}`}} usage is near the namespace quota. Tenant may experience scheduling failures."
+{{- end }}
