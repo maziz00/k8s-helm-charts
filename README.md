@@ -255,8 +255,7 @@ k8s-helm-charts/
 **Mohamed AbdelAziz** — Senior DevOps Architect
 12 years managing Kubernetes clusters from 3-node dev clusters to 200-node production fleets.
 
-- [LinkedIn](https://www.linkedin.com/in/maziz00/) | [Medium](https://medium.com/@maziz00) | [Upwork](https://www.upwork.com/freelancers/maziz00?s=1110580753140797440)
-
+- [LinkedIn](https://www.linkedin.com/in/maziz00/) | [Medium](https://medium.com/@maziz00) | [Upwork](https://www.upwork.com/freelancers/maziz00?s=1110580753140797440) | [Consulting](https://calendly.com/maziz00/devops)
 ---
 
 ## License
