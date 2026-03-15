@@ -250,7 +250,7 @@ k8s-helm-charts/
 
 ---
 
-## Author
+## About Me
 
 **Mohamed AbdelAziz** — Senior DevOps Architect
 12 years managing Kubernetes clusters from 3-node dev clusters to 200-node production fleets.
